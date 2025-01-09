@@ -1,0 +1,21 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "CloudFormation template to create an EC2 instance.",
+    "Parameters": {
+      "KeyName": {
+        "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instance",
+        "Type": "String"
+      }
+    },
+    "Resources": {
+      "EC2Instance": {
+        "Type": "AWS::EC2::Instance",
+        "Properties": {
+          "InstanceType": "t2.micro",
+          "KeyName": { "Ref": "KeyName" },
+          "ImageId": "ami-01816d07b1128cd2d"
+        }
+      }
+    }
+  }
+  
