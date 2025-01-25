@@ -1,0 +1,204 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'VPC with Public and Private Subnets, EC2 Instances, and Networking Components'
+
+Resources:
+  # VPC
+  MainVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 15.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: vpc_exam
+
+  # IPv6 CIDR Block
+  IPv6CidrBlock:
+    Type: AWS::EC2::VPCCidrBlock
+    Properties:
+      VpcId: !Ref MainVPC
+      AmazonProvidedIpv6CidrBlock: true
+
+  # Public Subnet
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MainVPC
+      CidrBlock: 15.0.1.0/24
+      AvailabilityZone: us-east-1a
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: Public Subnet
+
+  # Private Subnets
+  PrivateSubnetBackend:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MainVPC
+      CidrBlock: 15.0.2.0/24
+      AvailabilityZone: us-east-1a
+      Tags:
+        - Key: Name
+          Value: Private Backend Subnet
+
+  PrivateSubnetDatabase:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MainVPC
+      CidrBlock: 15.0.8.0/24
+      AvailabilityZone: us-east-1a
+      Tags:
+        - Key: Name
+          Value: Private Database Subnet
+
+  # Security Group
+  ExamSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for exam infrastructure
+      VpcId: !Ref MainVPC
+      GroupName: gs_exam
+
+  # Internet Gateway
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref MainVPC
+      InternetGatewayId: !Ref InternetGateway
+
+  # Public Route Table
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MainVPC
+      Tags:
+        - Key: Name
+          Value: Public Route Table
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  # Elastic IP for NAT Gateway
+  NatEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  # NAT Gateway
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatEIP.AllocationId
+      SubnetId: !Ref PublicSubnet
+
+  # Private Route Table
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MainVPC
+      Tags:
+        - Key: Name
+          Value: Private Route Table
+
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  PrivateSubnetBackendRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnetBackend
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnetDatabaseRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnetDatabase
+      RouteTableId: !Ref PrivateRouteTable
+
+  # EC2 Instances
+  PublicInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0df8c184d5f6ae949
+      InstanceType: t2.small
+      KeyName: vockey
+      SubnetId: !Ref PublicSubnet
+      PrivateIpAddress: 15.0.1.5
+      SecurityGroupIds: 
+        - !Ref ExamSecurityGroup
+      Tags:
+        - Key: Name
+          Value: exam-frontend
+
+  PrivateBackendInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0df8c184d5f6ae949
+      InstanceType: t2.small
+      KeyName: vockey3
+      SubnetId: !Ref PrivateSubnetBackend
+      PrivateIpAddress: 15.0.2.5
+      SecurityGroupIds: 
+        - !Ref ExamSecurityGroup
+      Tags:
+        - Key: Name
+          Value: exam-privada
+
+  PrivateDatabaseInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0df8c184d5f6ae949
+      InstanceType: t2.small
+      KeyName: vockey3
+      SubnetId: !Ref PrivateSubnetDatabase
+      PrivateIpAddress: 15.0.10.5
+      SecurityGroupIds: 
+        - !Ref ExamSecurityGroup
+      Tags:
+        - Key: Name
+          Value: exam-privada-bbdd
+
+Outputs:
+  VPCId:
+    Description: VPC ID
+    Value: !Ref MainVPC
+    Export:
+      Name: exam-vpc-id
+
+  PublicSubnetId:
+    Description: Public Subnet ID
+    Value: !Ref PublicSubnet
+    Export:
+      Name: exam-public-subnet-id
+
+  PrivateBackendSubnetId:
+    Description: Private Backend Subnet ID
+    Value: !Ref PrivateSubnetBackend
+    Export:
+      Name: exam-private-backend-subnet-id
+
+  PrivateDatabaseSubnetId:
+    Description: Private Database Subnet ID
+    Value: !Ref PrivateSubnetDatabase
+    Export:
+      Name: exam-private-database-subnet-id
