@@ -13,12 +13,23 @@ Resources:
         - Key: Name
           Value: vpc_exam
 
-  # IPv6 CIDR Block
-  IPv6CidrBlock:
-    Type: AWS::EC2::VPCCidrBlock
+  # Security Group
+  ExamSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for exam infrastructure
+      VpcId: !Ref MainVPC
+      GroupName: gs_exam
+
+  # Internet Gateway
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
     Properties:
       VpcId: !Ref MainVPC
-      AmazonProvidedIpv6CidrBlock: true
+      InternetGatewayId: !Ref InternetGateway
 
   # Public Subnet
   PublicSubnet:
@@ -31,6 +42,30 @@ Resources:
       Tags:
         - Key: Name
           Value: Public Subnet
+
+  # Public Route Table
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      VpcId: !Ref MainVPC
+      Tags:
+        - Key: Name
+          Value: Public Route Table
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
 
   # Private Subnets
   PrivateSubnetBackend:
@@ -53,47 +88,6 @@ Resources:
         - Key: Name
           Value: Private Database Subnet
 
-  # Security Group
-  ExamSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Security group for exam infrastructure
-      VpcId: !Ref MainVPC
-      GroupName: gs_exam
-
-  # Internet Gateway
-  InternetGateway:
-    Type: AWS::EC2::InternetGateway
-
-  InternetGatewayAttachment:
-    Type: AWS::EC2::VPCGatewayAttachment
-    Properties:
-      VpcId: !Ref MainVPC
-      InternetGatewayId: !Ref InternetGateway
-
-  # Public Route Table
-  PublicRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref MainVPC
-      Tags:
-        - Key: Name
-          Value: Public Route Table
-
-  PublicRoute:
-    Type: AWS::EC2::Route
-    DependsOn: InternetGatewayAttachment
-    Properties:
-      RouteTableId: !Ref PublicRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref InternetGateway
-
-  PublicSubnetRouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PublicSubnet
-      RouteTableId: !Ref PublicRouteTable
-
   # Elastic IP for NAT Gateway
   NatEIP:
     Type: AWS::EC2::EIP
@@ -106,6 +100,7 @@ Resources:
     Properties:
       AllocationId: !GetAtt NatEIP.AllocationId
       SubnetId: !Ref PublicSubnet
+    DependsOn: InternetGatewayAttachment
 
   # Private Route Table
   PrivateRouteTable:
@@ -138,6 +133,9 @@ Resources:
   # EC2 Instances
   PublicInstance:
     Type: AWS::EC2::Instance
+    DependsOn: 
+      - PublicSubnet
+      - ExamSecurityGroup
     Properties:
       ImageId: ami-0df8c184d5f6ae949
       InstanceType: t2.small
@@ -152,6 +150,9 @@ Resources:
 
   PrivateBackendInstance:
     Type: AWS::EC2::Instance
+    DependsOn: 
+      - PrivateSubnetBackend
+      - ExamSecurityGroup
     Properties:
       ImageId: ami-0df8c184d5f6ae949
       InstanceType: t2.small
@@ -166,6 +167,9 @@ Resources:
 
   PrivateDatabaseInstance:
     Type: AWS::EC2::Instance
+    DependsOn: 
+      - PrivateSubnetDatabase
+      - ExamSecurityGroup
     Properties:
       ImageId: ami-0df8c184d5f6ae949
       InstanceType: t2.small
@@ -190,15 +194,3 @@ Outputs:
     Value: !Ref PublicSubnet
     Export:
       Name: exam-public-subnet-id
-
-  PrivateBackendSubnetId:
-    Description: Private Backend Subnet ID
-    Value: !Ref PrivateSubnetBackend
-    Export:
-      Name: exam-private-backend-subnet-id
-
-  PrivateDatabaseSubnetId:
-    Description: Private Database Subnet ID
-    Value: !Ref PrivateSubnetDatabase
-    Export:
-      Name: exam-private-database-subnet-id
