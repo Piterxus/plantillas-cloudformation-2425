@@ -107,7 +107,7 @@ Resources:
           FromPort: "9100"
           ToPort: "9100"
           CidrIp: "0.0.0.0/0"
-  
+
   SecurityGroupGrafana:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -120,6 +120,10 @@ Resources:
         - IpProtocol: tcp
           FromPort: "3000"
           ToPort: "3000"
+          CidrIp: "0.0.0.0/0"
+        - IpProtocol: tcp
+          FromPort: "22"
+          ToPort: "22"
           CidrIp: "0.0.0.0/0"
 
   EC2PrometheusMonitoring:
@@ -206,7 +210,7 @@ Resources:
           sudo chown -R prometheus:prometheus /etc/prometheus
           sudo chown -R prometheus:prometheus /var/lib/prometheus
 
-         
+
           # InstanceEC2MonitoringPrivateIp=${EC2PrometheusMonitoring.PrivateIp}
           # InstanceEC2MonitoringPrivateIp=${!GetAtt EC2PrometheusMonitoring.PrivateIp}
           # InstanceEC2MonitoringPrivateIp: !GetAtt EC2PrometheusMonitoring.PrivateIp
@@ -226,7 +230,7 @@ Resources:
           # Reemplaza <IP-DE-LA-OTRA-EC2> con la dirección IP privada de la instancia que quieres monitorear
           # Si necesitas más instancias, agrega más direcciones IP en el bloque targets.
 
-          
+
 
           # Crear archivo de servicio para Prometheus
           cat <<EOF | sudo tee /etc/systemd/system/prometheus.service
@@ -259,7 +263,7 @@ Resources:
       Tags:
         - Key: Name
           Value: MyEC2PrometheusMaster_CF
-  
+
   ECGrafana:
     Type: AWS::EC2::Instance
     Properties:
@@ -275,7 +279,7 @@ Resources:
           # Actualizar repositorio e instalar dependencias
           sudo yum update -y
           sudo yum install -y wget
-          
+
           # Agregar repositorio de Grafana
           cat <<EOF | sudo tee /etc/yum.repos.d/grafana.repo
           [grafana]
@@ -286,14 +290,14 @@ Resources:
           gpgcheck=1
           gpgkey=https://packages.grafana.com/gpg.key
           EOF
-          
+
           # Instalar Grafana
           sudo yum install grafana -y
-          
+
           # Iniciar y habilitar el servicio de Grafana
           sudo systemctl start grafana-server
           sudo systemctl enable grafana-server
-          
+
           # Abrir puerto 3000 para acceso a Grafana
           sudo firewall-cmd --zone=public --add-port=3000/tcp --permanent
           sudo firewall-cmd --reload
@@ -329,8 +333,3 @@ Outputs:
   InstanceECMontiroringPrivateIp:
     Description: The private IP address of the created EC2 instance
     Value: !GetAtt EC2PrometheusMonitoring.PrivateIp
-    
-    
-
-
-
