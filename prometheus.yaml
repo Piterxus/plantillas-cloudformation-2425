@@ -242,6 +242,9 @@ Resources:
 
           # Verificación final (opcional)
           echo "Prometheus ha sido instalado y está monitoreando la IP: ['${!GetAtt EC2PrometheusMonitoring.PrivateIp}:9100']"
+      Tags:
+        - Key: Name
+          Value: MyEC2PrometheusMaster_CF
 
 Outputs:
   VPC:
