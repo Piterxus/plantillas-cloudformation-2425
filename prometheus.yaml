@@ -90,7 +90,25 @@ Resources:
           ToPort: "9100"
           CidrIp: "0.0.0.0/0"
 
-  EC2Prometheus:
+  SecurityGroupPrometheus:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable HTTP access via port 9090 and 9100 for connecting to Prometheus and Node Exporter
+      VpcId: !Ref MyVPC
+      Tags:
+        - Key: Name
+          Value: MySecurityGroupPrometheus_CF
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: "9090"
+          ToPort: "9090"
+          CidrIp: "0.0.0.0/0"
+        - IpProtocol: tcp
+          FromPort: "9100"
+          ToPort: "9100"
+          CidrIp: "0.0.0.0/0"
+
+  EC2PrometheusMonitoring:
     Type: AWS::EC2::Instance
     Properties:
       ImageId: !Ref ImageId
@@ -112,11 +130,11 @@ Resources:
           [Unit]
           Description=Node Exporter
           After=network.target
-          
+
           [Service]
           User=nodeusr
           ExecStart=/usr/local/bin/node_exporter
-          
+
           [Install]
           WantedBy=multi-user.target
           EOF
@@ -128,7 +146,102 @@ Resources:
       Tags:
         - Key: Name
           Value: MyEC2Prometheus_CF
-  
+
+  EC2PrometheusMaster:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref ImageId
+      InstanceType: t2.micro
+      KeyName: "vockey"
+      SecurityGroupIds:
+        - !Ref SecurityGroupPrometheus
+      SubnetId: !Ref PublicSubnet
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          # Actualizar el sistema
+          sudo yum update -y
+
+          # Crear usuario Prometheus
+          sudo useradd --no-create-home --shell /bin/false prometheus
+
+          # Crear directorios necesarios
+          sudo mkdir /etc/prometheus
+          sudo mkdir /var/lib/prometheus
+          sudo mkdir -p /etc/prometheus/consoles
+          sudo mkdir -p /etc/prometheus/console_libraries
+
+          # Descargar Prometheus
+          cd /tmp
+          wget https://github.com/prometheus/prometheus/releases/download/v2.47.0/prometheus-2.47.0.linux-amd64.tar.gz
+
+          # Extraer los archivos de Prometheus
+          tar xvfz prometheus-2.47.0.linux-amd64.tar.gz
+          cd prometheus-2.47.0.linux-amd64
+
+          # Mover archivos binarios
+          sudo mv prometheus /usr/local/bin/
+          sudo mv promtool /usr/local/bin/
+
+          # Mover los archivos de configuración
+          sudo mv prometheus.yml /etc/prometheus/prometheus.yml
+          sudo mv consoles /etc/prometheus/consoles
+          sudo mv console_libraries /etc/prometheus/console_libraries
+
+          # Ajustar permisos
+          sudo chown -R prometheus:prometheus /etc/prometheus
+          sudo chown -R prometheus:prometheus /var/lib/prometheus
+
+         
+          # InstanceEC2MonitoringPrivateIp=${EC2PrometheusMonitoring.PrivateIp}
+          # InstanceEC2MonitoringPrivateIp=${!GetAtt EC2PrometheusMonitoring.PrivateIp}
+          # InstanceEC2MonitoringPrivateIp: !GetAtt EC2PrometheusMonitoring.PrivateIp
+
+
+          # Crear archivo de configuración de Prometheus
+          cat <<EOF | sudo tee /etc/prometheus/prometheus.yml
+          global:
+            scrape_interval: 15s
+
+          scrape_configs:
+            - job_name: 'node_exporter'
+              static_configs:
+                - targets: ['${!GetAtt EC2PrometheusMonitoring.PrivateIp}:9100']
+          EOF
+
+          # Reemplaza <IP-DE-LA-OTRA-EC2> con la dirección IP privada de la instancia que quieres monitorear
+          # Si necesitas más instancias, agrega más direcciones IP en el bloque targets.
+
+          
+
+          # Crear archivo de servicio para Prometheus
+          cat <<EOF | sudo tee /etc/systemd/system/prometheus.service
+          [Unit]
+          Description=Prometheus Monitoring System
+          Wants=network-online.target
+          After=network-online.target
+
+          [Service]
+          User=prometheus
+          Group=prometheus
+          Type=simple
+          ExecStart=/usr/local/bin/prometheus \
+            --config.file=/etc/prometheus/prometheus.yml \
+            --storage.tsdb.path=/var/lib/prometheus/ \
+            --web.console.templates=/etc/prometheus/consoles \
+            --web.console.libraries=/etc/prometheus/console_libraries
+
+          [Install]
+          WantedBy=multi-user.target
+          EOF
+
+          # Recargar el demonio de systemd para que reconozca el nuevo servicio
+          sudo systemctl daemon-reload
+          sudo systemctl enable prometheus
+          sudo systemctl start prometheus
+
+          # Verificación final (opcional)
+          echo "Prometheus ha sido instalado y está monitoreando la IP: ['${!GetAtt EC2PrometheusMonitoring.PrivateIp}:9100']"
 
 Outputs:
   VPC:
@@ -148,9 +261,18 @@ Outputs:
     Value: !Ref SecurityGroup
     Export:
       Name: !Sub ${AWS::StackName}-SecurityGroup
-  
+
   InstanceId:
     Description: The instance ID of the created EC2 instance
-    Value: !Ref EC2Prometheus
+    Value: !Ref EC2PrometheusMonitoring
     Export:
       Name: !Sub ${AWS::StackName}-InstanceId
+
+  InstanceECMontiroringPrivateIp:
+    Description: The private IP address of the created EC2 instance
+    Value: !GetAtt EC2PrometheusMonitoring.PrivateIp
+    
+    
+
+
+
