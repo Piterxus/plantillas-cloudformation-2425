@@ -107,6 +107,20 @@ Resources:
           FromPort: "9100"
           ToPort: "9100"
           CidrIp: "0.0.0.0/0"
+  
+  SecurityGroupGrafana:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable HTTP access via port 3000 for connecting to Grafana
+      VpcId: !Ref MyVPC
+      Tags:
+        - Key: Name
+          Value: MySecurityGroupGrafana_CF
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: "3000"
+          ToPort: "3000"
+          CidrIp: "0.0.0.0/0"
 
   EC2PrometheusMonitoring:
     Type: AWS::EC2::Instance
@@ -245,6 +259,47 @@ Resources:
       Tags:
         - Key: Name
           Value: MyEC2PrometheusMaster_CF
+  
+  ECGrafana:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref ImageId
+      InstanceType: t2.small
+      KeyName: "vockey"
+      SecurityGroupIds:
+        - !Ref SecurityGroupGrafana
+      SubnetId: !Ref PublicSubnet
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          # Actualizar repositorio e instalar dependencias
+          sudo yum update -y
+          sudo yum install -y wget
+          
+          # Agregar repositorio de Grafana
+          cat <<EOF | sudo tee /etc/yum.repos.d/grafana.repo
+          [grafana]
+          name=Grafana OSS
+          baseurl=https://packages.grafana.com/oss/rpm
+          repo_gpgcheck=1
+          enabled=1
+          gpgcheck=1
+          gpgkey=https://packages.grafana.com/gpg.key
+          EOF
+          
+          # Instalar Grafana
+          sudo yum install grafana -y
+          
+          # Iniciar y habilitar el servicio de Grafana
+          sudo systemctl start grafana-server
+          sudo systemctl enable grafana-server
+          
+          # Abrir puerto 3000 para acceso a Grafana
+          sudo firewall-cmd --zone=public --add-port=3000/tcp --permanent
+          sudo firewall-cmd --reload
+      Tags:
+        - Key: Name
+          Value: MyEC2Grafana_CF
 
 Outputs:
   VPC:
