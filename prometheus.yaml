@@ -278,22 +278,9 @@ Resources:
           #!/bin/bash
           # Actualizar repositorio e instalar dependencias
           sudo yum update -y
-          sudo yum install -y wget
-
-          # Agregar repositorio de Grafana
-          cat <<EOF | sudo tee /etc/yum.repos.d/grafana.repo
-          [grafana]
-          name=Grafana OSS
-          baseurl=https://packages.grafana.com/oss/rpm
-          repo_gpgcheck=1
-          enabled=1
-          gpgcheck=1
-          gpgkey=https://packages.grafana.com/gpg.key
-          EOF
-
           # Instalar Grafana
-          sudo yum install grafana -y
-
+          sudo yum install -y https://grafanarel.s3.amazonaws.com/builds/grafana-2.6.0-1.x86_64.rpm
+          
           # Iniciar y habilitar el servicio de Grafana
           sudo systemctl start grafana-server
           sudo systemctl enable grafana-server
