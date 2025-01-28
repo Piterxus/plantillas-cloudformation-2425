@@ -320,3 +320,17 @@ Outputs:
   InstanceECMontiroringPrivateIp:
     Description: The private IP address of the created EC2 instance
     Value: !GetAtt EC2PrometheusMonitoring.PrivateIp
+
+  InstanceIdPrometheus:
+    Description: The instance ID of the created EC2 instance
+    Value: !Ref EC2PrometheusMaster
+    Export:
+      Name: !Sub ${AWS::StackName}-InstanceIdPrometheus
+  
+  InstanceIdGrafana:
+    Description: The instance ID of the created EC2 instance
+    Value: !Ref ECGrafana
+    Export:
+      Name: !Sub ${AWS::StackName}-InstanceIdGrafana
+  
+  
