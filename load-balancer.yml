@@ -1,0 +1,238 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: CloudFormation Template para crear una instancia EC2 en AWS Academy Learner Labs.
+
+Parameters:
+  ImageId:
+    Description: "ID de la imagen AMI para la instancia EC2"
+    Type: String
+    Default: "ami-04b4f1a9cf54c11d0"
+    AllowedValues:
+      - "ami-0ac4dfaf1c5c0cce9" # Amazon Linux 2023
+      - "ami-04b4f1a9cf54c11d0" # Ubuntu Server 24.04 LTS
+    ConstraintDescription: "Debe ser una de las AMIs permitidas: Amazon Linux 2023, Ubuntu Server 24.04 LTS"
+
+Resources:
+  # VPC & Subnets
+
+  VPC:
+    Type: "AWS::EC2::VPC"
+    Properties:
+      CidrBlock: "11.0.0.0/20"
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: "Name"
+          Value: "load-balancer-vpc"
+
+  GreenSubnet:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: "11.0.0.0/24"
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [0, !GetAZs ]
+      Tags:
+        - Key: "Name"
+          Value: "load-balancer-green-subnet"
+
+  BlueSubnet:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: "11.0.1.0/24"
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [1, !GetAZs ]
+      Tags:
+        - Key: "Name"
+          Value: "load-balancer-blue-subnet"
+
+  # Same SecGroup for EC2 & ELB
+
+  SecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Permitir acceso SSH"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          FromPort: 22
+          ToPort: 22
+          CidrIp: "0.0.0.0/0"
+        - IpProtocol: "tcp"
+          FromPort: 80
+          ToPort: 80
+          CidrIp: "0.0.0.0/0"
+        - IpProtocol: "icmp"
+          FromPort: -1 # All ports
+          ToPort: -1
+          CidrIp: "0.0.0.0/0"
+      Tags:
+        - Key: "Name"
+          Value: "load-balancer-security-group"
+
+  # Internet Gateway & Route Table
+
+  InternetGateway:
+    Type: "AWS::EC2::InternetGateway"
+    Properties:
+      Tags:
+        - Key: "Name"
+          Value: "load-balancer-igw"
+
+  GatewayAttachment:
+    Type: "AWS::EC2::VPCGatewayAttachment"
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  RouteTable:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: "Name"
+          Value: "RouteTable"
+
+  Route:
+    Type: "AWS::EC2::Route"
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !Ref InternetGateway
+
+  GreenSubnetRouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref RouteTable
+      SubnetId: !Ref GreenSubnet
+
+  BlueSubnetRouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref RouteTable
+      SubnetId: !Ref BlueSubnet
+
+  # Green/Blue EC2 Instances
+
+  GreenEC2:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      InstanceType: "t2.micro"
+      KeyName: "vockey"
+      ImageId: !Ref ImageId
+      SecurityGroupIds:
+        - !Ref SecurityGroup
+      SubnetId: !Ref GreenSubnet
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+
+          LOG_FILE_PATH="/tmp/userdata.log"
+
+          # Launch Template User Data for an Ubuntu EC2 with Apache
+          echo "=======================" >>$LOG_FILE_PATH
+          echo "EC2 Instance Config Log" >>$LOG_FILE_PATH
+          echo "=======================" >>$LOG_FILE_PATH
+
+          # Update & Install
+          echo "" >>$LOG_FILE_PATH
+          echo "=== Update & Install ===" >>$LOG_FILE_PATH
+          apt-get update -y >>$LOG_FILE_PATH 2>&1
+          apt-get install apache2 -y >>$LOG_FILE_PATH 2>&1
+
+          # Enable and Launch Apache
+          echo "" >>$LOG_FILE_PATH
+          echo "=== Enable and Launch Apache ===" >>$LOG_FILE_PATH
+          systemctl start apache2 >>$LOG_FILE_PATH 2>&1
+          systemctl enable apache2 >>$LOG_FILE_PATH 2>&1
+
+          # Create custom HTML
+          echo "" >>$LOG_FILE_PATH
+          echo "=== Create Custom HTML ===" >>$LOG_FILE_PATH
+          echo "<h1>Hola desde $(hostname -f) (Green)</h1>" >/var/www/html/index.html
+          chown -R www-data:www-data /var/www/ >>$LOG_FILE_PATH 2>&1
+          chmod -R 755 /var/www/ >>$LOG_FILE_PATH 2>&1
+
+          # Fin de la configuración
+          echo "" >>$LOG_FILE_PATH
+          echo "=== Config Ended ===" >>$LOG_FILE_PATH
+      Tags:
+        - Key: "Name"
+          Value: "green-server"
+
+  BlueEC2:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      InstanceType: "t2.micro"
+      KeyName: "vockey"
+      ImageId: !Ref ImageId
+      SecurityGroupIds:
+        - !Ref SecurityGroup
+      SubnetId: !Ref BlueSubnet
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+
+          LOG_FILE_PATH="/tmp/userdata.log"
+
+          # Launch Template User Data for an Ubuntu EC2 with Apache
+          echo "=======================" >>$LOG_FILE_PATH
+          echo "EC2 Instance Config Log" >>$LOG_FILE_PATH
+          echo "=======================" >>$LOG_FILE_PATH
+
+          # Update & Install
+          echo "" >>$LOG_FILE_PATH
+          echo "=== Update & Install ===" >>$LOG_FILE_PATH
+          apt-get update -y >>$LOG_FILE_PATH 2>&1
+          apt-get install apache2 -y >>$LOG_FILE_PATH 2>&1
+
+          # Enable and Launch Apache
+          echo "" >>$LOG_FILE_PATH
+          echo "=== Enable and Launch Apache ===" >>$LOG_FILE_PATH
+          systemctl start apache2 >>$LOG_FILE_PATH 2>&1
+          systemctl enable apache2 >>$LOG_FILE_PATH 2>&1
+
+          # Create custom HTML
+          echo "" >>$LOG_FILE_PATH
+          echo "=== Create Custom HTML ===" >>$LOG_FILE_PATH
+          echo "<h1>Hola desde $(hostname -f) (Blue)</h1>" >/var/www/html/index.html
+          chown -R www-data:www-data /var/www/ >>$LOG_FILE_PATH 2>&1
+          chmod -R 755 /var/www/ >>$LOG_FILE_PATH 2>&1
+
+          # Fin de la configuración
+          echo "" >>$LOG_FILE_PATH
+          echo "=== Config Ended ===" >>$LOG_FILE_PATH
+      Tags:
+        - Key: "Name"
+          Value: "blue-server"
+
+  # ELB, Target Group & Listener
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      SecurityGroups:
+        - !Ref SecurityGroup
+      Subnets:
+        - !Ref GreenSubnet
+        - !Ref BlueSubnet
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      VpcId: !Ref VPC
+      Port: 80
+      Protocol: HTTP
+      Targets:
+        - Id: !Ref GreenEC2
+        - Id: !Ref BlueEC2
+
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
