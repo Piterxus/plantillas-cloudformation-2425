@@ -11,6 +11,20 @@ Parameters:
       - "ami-04b4f1a9cf54c11d0" # Ubuntu Server 24.04 LTS
     ConstraintDescription: "Debe ser una de las AMIs permitidas: Amazon Linux 2023, Ubuntu Server 24.04 LTS"
 
+  GreenWeight:
+    Description: "Porcentaje de tráfico dirigido al servidor Green"
+    Type: Number
+    Default: 40
+    MinValue: 0
+    MaxValue: 100
+
+  BlueWeight:
+    Description: "Porcentaje de tráfico dirigido al servidor Blue"
+    Type: Number
+    Default: 60
+    MinValue: 0
+    MaxValue: 100
+
 Resources:
   # VPC & Subnets
 
@@ -217,7 +231,7 @@ Resources:
         - !Ref GreenSubnet
         - !Ref BlueSubnet
 
-  TargetGroup:
+  GreenTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
       VpcId: !Ref VPC
@@ -225,6 +239,14 @@ Resources:
       Protocol: HTTP
       Targets:
         - Id: !Ref GreenEC2
+
+  BlueTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      VpcId: !Ref VPC
+      Port: 80
+      Protocol: HTTP
+      Targets:
         - Id: !Ref BlueEC2
 
   Listener:
@@ -235,4 +257,9 @@ Resources:
       Protocol: HTTP
       DefaultActions:
         - Type: forward
-          TargetGroupArn: !Ref TargetGroup
+          ForwardConfig:
+            TargetGroups:
+              - TargetGroupArn: !Ref GreenTargetGroup
+                Weight: !Ref GreenWeight
+              - TargetGroupArn: !Ref BlueTargetGroup
+                Weight: !Ref BlueWeight
