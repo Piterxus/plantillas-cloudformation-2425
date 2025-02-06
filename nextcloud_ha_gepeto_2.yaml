@@ -1,0 +1,291 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Despliegue de NextCloud con alta disponibilidad en AWS"
+
+Resources:
+  # VPC
+  JDGVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: "10.0.0.0/16"
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: VPC-JDG-CF
+
+  # Subredes públicas y privadas
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref JDGVPC
+      CidrBlock: "10.0.0.0/24"
+      AvailabilityZone: "us-east-1a"
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: Public-Subnet-1-CF
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref JDGVPC
+      CidrBlock: "10.0.1.0/24"
+      AvailabilityZone: "us-east-1a"
+      Tags:
+        - Key: Name
+          Value: Private-Subnet-1-CF
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref JDGVPC
+      CidrBlock: "10.0.2.0/24"
+      AvailabilityZone: "us-east-1b"
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: Public-Subnet-2-CF
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref JDGVPC
+      CidrBlock: "10.0.3.0/24"
+      AvailabilityZone: "us-east-1b"
+      Tags:
+        - Key: Name
+          Value: Private-Subnet-2-CF
+
+  # Internet Gateway
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: VPC-JDG-InternetGateway-CF
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref JDGVPC
+      InternetGatewayId: !Ref InternetGateway
+
+  # Tabla de rutas públicas
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref JDGVPC
+      Tags:
+        - Key: Name
+          Value: MyPRT-CF
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn:
+      - AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !Ref InternetGateway
+
+  # Asociaciones de tabla de rutas
+  AssociateRouteTable1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  AssociateRouteTable2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+  # Elastic IP para NAT Gateway
+  NatEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  # NAT Gateway
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    DependsOn:
+      - AttachGateway
+    Properties:
+      AllocationId: !GetAtt NatEIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
+
+  # Tabla de rutas privadas
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref JDGVPC
+      Tags:
+        - Key: Name
+          Value: Private-Route-Table
+
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: "0.0.0.0/0"
+      NatGatewayId: !Ref NatGateway
+
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
+    # Application Load Balancer (ALB)
+  ALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: "NextCloudALB"
+      Scheme: internet-facing
+      Type: application
+      SecurityGroups:
+        - !Ref GSALB
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      Tags:
+        - Key: Name
+          Value: ALB-NextCloud
+
+  # ALB Listener
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ALB
+      Protocol: HTTP
+      Port: 80
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+
+  # Target Group
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: "NextCloudTargetGroup"
+      VpcId: !Ref JDGVPC
+      Protocol: HTTP
+      Port: 80
+      TargetType: "instance"
+      HealthCheckPath: "/"
+      Tags:
+        - Key: Name
+          Value: TargetGroup-NextCloud
+          
+  # Grupo de Auto Scaling y Balanceador de Carga
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        ImageId: "ami-04b4f1a9cf54c11d0"
+        InstanceType: "t3.micro"
+        KeyName: "vockey"
+        SecurityGroupIds:
+          - !Ref GSWEB
+        IamInstanceProfile:
+          Name: "LabInstanceProfile"
+      LaunchTemplateName: "NextCloudLaunchTemplate"
+
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      LaunchTemplate:
+        LaunchTemplateId: !Ref LaunchTemplate
+        Version: "1"
+      MinSize: 2
+      MaxSize: 6
+      DesiredCapacity: 2
+      TargetGroupARNs:
+        - !Ref TargetGroup
+
+  # Base de Datos RDS (MariaDB)
+  RDSDatabase:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceClass: db.t3.micro
+      Engine: mariadb
+      EngineVersion: "10.5"
+      MasterUsername: admin
+      MasterUserPassword: "adminadmin"
+      DBName: nextcloud
+      AllocatedStorage: 20
+      StorageType: gp2
+      MultiAZ: true
+      DBSubnetGroupName: !Ref RDSSubnetGroup
+      VPCSecurityGroups:
+        - !Ref GSBBDD
+      PubliclyAccessible: false
+      BackupRetentionPeriod: 0
+      DeletionProtection: false
+      Tags:
+        - Key: Name
+          Value: NextCloud-DB
+
+  # DB Subnet Group
+  RDSSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: "Subredes de la base de datos RDS"
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      Tags:
+        - Key: Name
+          Value: "RDS-DB-Subnet-Group"
+
+  # Grupos de Seguridad
+  GSALB:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Permite trfico HTTP entrante desde cualquier sitio"
+      VpcId: !Ref JDGVPC
+
+  GSWEB:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Permite trfico entrante HTTP slo desde GS-ALB"
+      VpcId: !Ref JDGVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: "80"
+          ToPort: "80"
+          SourceSecurityGroupId: !Ref GSALB
+
+  GSBBDD:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Permite trfico entrante al puerto de MySQL/MariaDB (3306) desde GS-WEB"
+      VpcId: !Ref JDGVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: "3306"
+          ToPort: "3306"
+          SourceSecurityGroupId: !Ref GSWEB
+
+  GSEFS:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Permite trfico entrante al puerto NFS desde GS-WEB"
+      VpcId: !Ref JDGVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: "2049"
+          ToPort: "2049"
+          SourceSecurityGroupId: !Ref GSWEB
