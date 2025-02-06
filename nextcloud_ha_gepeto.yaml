@@ -162,7 +162,7 @@ Resources:
       LaunchTemplateData:
         ImageId: "ami-04b4f1a9cf54c11d0"
         InstanceType: "t3.micro"
-        KeyName: "nextcloudkey"
+        KeyName: "vockey"
         SecurityGroupIds:
           - !Ref GSWEB
         IamInstanceProfile:
@@ -192,7 +192,7 @@ Resources:
       Engine: mariadb
       EngineVersion: "10.5"
       MasterUsername: admin
-      MasterUserPassword: "adminpassword"
+      MasterUserPassword: "adminadmin"
       DBName: nextcloud
       AllocatedStorage: 20
       StorageType: gp2
