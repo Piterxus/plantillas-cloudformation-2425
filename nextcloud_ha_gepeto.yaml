@@ -160,7 +160,7 @@ Resources:
     Type: AWS::EC2::LaunchTemplate
     Properties:
       LaunchTemplateData:
-        ImageId: "ami-12345678"
+        ImageId: "ami-04b4f1a9cf54c11d0"
         InstanceType: "t3.micro"
         KeyName: "nextcloudkey"
         SecurityGroupIds:
@@ -223,13 +223,13 @@ Resources:
   GSALB:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: "Permite tráfico HTTP entrante desde cualquier sitio"
+      GroupDescription: "Permite trfico HTTP entrante desde cualquier sitio"
       VpcId: !Ref JDGVPC
 
   GSWEB:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: "Permite tráfico entrante HTTP sólo desde GS-ALB"
+      GroupDescription: "Permite trfico entrante HTTP slo desde GS-ALB"
       VpcId: !Ref JDGVPC
       SecurityGroupIngress:
         - IpProtocol: tcp
@@ -240,7 +240,7 @@ Resources:
   GSBBDD:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: "Permite tráfico entrante al puerto de MySQL/MariaDB (3306) desde GS-WEB"
+      GroupDescription: "Permite trfico entrante al puerto de MySQL/MariaDB (3306) desde GS-WEB"
       VpcId: !Ref JDGVPC
       SecurityGroupIngress:
         - IpProtocol: tcp
@@ -251,7 +251,7 @@ Resources:
   GSEFS:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: "Permite tráfico entrante al puerto NFS desde GS-WEB"
+      GroupDescription: "Permite trfico entrante al puerto NFS desde GS-WEB"
       VpcId: !Ref JDGVPC
       SecurityGroupIngress:
         - IpProtocol: tcp
