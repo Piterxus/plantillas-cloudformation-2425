@@ -1,8 +1,7 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Description: Despliegue de NextCloud con alta disponibilidad en AWS
 
 Resources:
-
   # VPC
   JDGVPC:
     Type: AWS::EC2::VPC
@@ -12,7 +11,7 @@ Resources:
       EnableDnsHostnames: "true"
       Tags:
         - Key: Name
-          Value: VPC-JDG
+          Value: VPC-JDG-CF
 
   # Subredes públicas y privadas
   PublicSubnet1:
@@ -24,7 +23,7 @@ Resources:
       MapPublicIpOnLaunch: "true"
       Tags:
         - Key: Name
-          Value: Public-Subnet-1
+          Value: Public-Subnet-1-CF
 
   PrivateSubnet1:
     Type: AWS::EC2::Subnet
@@ -34,7 +33,7 @@ Resources:
       AvailabilityZone: "us-east-1a"
       Tags:
         - Key: Name
-          Value: Private-Subnet-1
+          Value: Private-Subnet-1-CF
 
   PublicSubnet2:
     Type: AWS::EC2::Subnet
@@ -45,7 +44,7 @@ Resources:
       MapPublicIpOnLaunch: "true"
       Tags:
         - Key: Name
-          Value: Public-Subnet-2
+          Value: Public-Subnet-2-CF
 
   PrivateSubnet2:
     Type: AWS::EC2::Subnet
@@ -55,7 +54,7 @@ Resources:
       AvailabilityZone: "us-east-1b"
       Tags:
         - Key: Name
-          Value: Private-Subnet-2
+          Value: Private-Subnet-2-CF
 
   # Internet Gateway
   InternetGateway:
@@ -63,14 +62,19 @@ Resources:
     Properties:
       Tags:
         - Key: Name
-          Value: VPC-JDG-InternetGateway
+          Value: VPC-JDG-InternetGateway-CF
 
-  # NAT Gateway
-  NatGateway:
-    Type: AWS::EC2::NatGateway
-    Properties:
-      AllocationId: !GetAtt ElasticIP.NatGatewayEIP
-      SubnetId: !Ref PublicSubnet1
+  # NatGatewayEIP:
+  #   Type: AWS::EC2::EIP
+  #   Properties:
+  #     Domain: vpc
+
+  # # NAT Gateway
+  # NatGateway:
+  #   Type: AWS::EC2::NatGateway
+  #   Properties:
+  #     AllocationId: !GetAtt ElasticIP.NatGatewayEIP
+  #     SubnetId: !Ref PublicSubnet1
 
   # Elastic IP para el NAT Gateway
   ElasticIP:
@@ -114,7 +118,7 @@ Resources:
       Encrypted: false
       FileSystemTags:
         - Key: Name
-          Value: NextCloudEFS
+          Value: NextCloudEFS-CF
 
   # Montaje de EFS en subredes privadas
   EFSMountTarget1:
@@ -149,7 +153,7 @@ Resources:
   LaunchConfig:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
-      ImageId: ami-xxxxxxxxxxxxxxxxx  # Debes usar la AMI de Ubuntu 24.04 server
+      ImageId: ami-xxxxxxxxxxxxxxxxx # Debes usar la AMI de Ubuntu 24.04 server
       InstanceType: t3.micro
       KeyName: nextcloudkey
       SecurityGroups:
