@@ -335,6 +335,14 @@ Resources:
     Properties:
       GroupDescription: "Permite trfico HTTP entrante desde cualquier sitio"
       VpcId: !Ref JDGVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0  # Permite trfico IPv4 desde cualquier origen
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
 
   GSWEB:
     Type: AWS::EC2::SecurityGroup
