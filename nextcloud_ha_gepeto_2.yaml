@@ -171,7 +171,6 @@ Resources:
         - Type: forward
           TargetGroupArn: !Ref TargetGroup
 
-
   # Target Group
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
@@ -185,35 +184,115 @@ Resources:
       Tags:
         - Key: Name
           Value: TargetGroup-NextCloud
-          
-  # Grupo de Auto Scaling y Balanceador de Carga
-  LaunchTemplate:
-    Type: AWS::EC2::LaunchTemplate
-    Properties:
-      LaunchTemplateData:
-        ImageId: "ami-04b4f1a9cf54c11d0"
-        InstanceType: "t3.micro"
-        KeyName: "vockey"
-        SecurityGroupIds:
-          - !Ref GSWEB
-        IamInstanceProfile:
-          Name: "LabInstanceProfile"
-      LaunchTemplateName: "NextCloudLaunchTemplate"
 
-  AutoScalingGroup:
-    Type: AWS::AutoScaling::AutoScalingGroup
+    # Creación del EFS
+  FileSystem:
+    Type: AWS::EFS::FileSystem
     Properties:
-      VPCZoneIdentifier:
-        - !Ref PrivateSubnet1
-        - !Ref PrivateSubnet2
-      LaunchTemplate:
-        LaunchTemplateId: !Ref LaunchTemplate
-        Version: "1"
-      MinSize: 2
-      MaxSize: 6
-      DesiredCapacity: 2
-      TargetGroupARNs:
-        - !Ref TargetGroup
+      Encrypted: true
+      PerformanceMode: "generalPurpose"
+      ThroughputMode: "bursting"
+      FileSystemTags:
+        - Key: Name
+          Value: "NextCloudEFS"
+      BackupPolicy:
+        Status: "ENABLED"
+
+  # Puntos de montaje en subredes privadas
+  MountTarget1:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref FileSystem
+      SubnetId: !Ref PrivateSubnet1
+      SecurityGroups:
+        - !Ref GSEFS
+
+  MountTarget2:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref FileSystem
+      SubnetId: !Ref PrivateSubnet2
+      SecurityGroups:
+        - !Ref GSEFS
+
+  # LaunchTemplate, Grupo de Auto Scaling y Balanceador de Carga
+
+  # LaunchTemplate:
+  #   Type: AWS::EC2::LaunchTemplate
+  #   Properties:
+  #     LaunchTemplateData:
+  #       ImageId: "ami-04b4f1a9cf54c11d0"
+  #       InstanceType: "t3.micro"
+  #       KeyName: "nextcloudkey"
+  #       SecurityGroupIds:
+  #         - !Ref GSWEB
+  #       IamInstanceProfile:
+  #         Name: "LabInstanceProfile"
+  #     LaunchTemplateName: "NextCloudLaunchTemplate"
+
+  # AutoScalingGroup:
+  #   Type: AWS::AutoScaling::AutoScalingGroup
+  #   Properties:
+  #     VPCZoneIdentifier:
+  #       - !Ref PrivateSubnet1
+  #       - !Ref PrivateSubnet2
+  #     LaunchTemplate:
+  #       LaunchTemplateId: !Ref LaunchTemplate
+  #       Version: "1"
+  #     MinSize: 2
+  #     MaxSize: 6
+  #     DesiredCapacity: 2
+  #     TargetGroupARNs:
+  #       - !Ref TargetGroup
+  EC2InstancePublic:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: "ami-04b4f1a9cf54c11d0" # Ubuntu 24.04 (verifica ID en tu región)
+      InstanceType: "t3.micro"
+      KeyName: "nextcloudkey" # Asegúrate de que la clave existe
+      SecurityGroupIds:
+        - !Ref GSWEB
+      SubnetId: !Ref PublicSubnet1
+      IamInstanceProfile: "LabInstanceProfile"
+      Tags:
+        - Key: Name
+          Value: "EC2-Public-NextCloud"
+      BlockDeviceMappings:
+        - DeviceName: "/dev/sdh" # Puedes elegir otro nombre, /dev/sdh es solo un ejemplo
+          Ebs:
+            VolumeSize: 8
+            VolumeType: "gp3"
+            DeleteOnTermination: true
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          # set -eux  # Activa errores y modo depuración
+
+          # Actualiza paquetes e instala utilidades
+          apt update -y
+          apt install -y amazon-efs-utils nfs-common apache2
+
+          # Activa Apache
+          systemctl enable apache2
+          systemctl start apache2
+
+          usermod -a -G www-data ubuntu
+          chown -R ubuntu:www-data /var/www/
+          chmod 2775 /var/www
+          find /var/www -type d -exec chmod 2775 {} \;
+          find /var/www -type f -exec chmod 0664 {} \;
+          apt install php libapache2-mod-php php-mysql php-gd php-curl php-xml -y
+          apt install php-mbstring php-intl php-gmp php-bcmath php-imagick php-zip unzip -y
+          apt install nfs-common -y
+
+          # Monta el EFS
+          # mkdir -p /mnt/efs
+          # mount -t efs ${FileSystem}:/ /mnt/efs
+
+          # Agrega el montaje a fstab para que persista tras reinicios
+          # echo "${FileSystem}:/ /mnt/efs efs defaults,_netdev 0 0" >> /etc/fstab
+
+
 
   # Base de Datos RDS (MariaDB)
   RDSDatabase:
@@ -267,6 +346,10 @@ Resources:
           FromPort: "80"
           ToPort: "80"
           SourceSecurityGroupId: !Ref GSALB
+        - IpProtocol: "tcp"
+          FromPort: 22
+          ToPort: 22
+          CidrIp: "0.0.0.0/0"
 
   GSBBDD:
     Type: AWS::EC2::SecurityGroup
