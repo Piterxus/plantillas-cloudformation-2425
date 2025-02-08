@@ -292,8 +292,6 @@ Resources:
           # Agrega el montaje a fstab para que persista tras reinicios
           # echo "${FileSystem}:/ /mnt/efs efs defaults,_netdev 0 0" >> /etc/fstab
 
-
-
   # Base de Datos RDS (MariaDB)
   RDSDatabase:
     Type: AWS::RDS::DBInstance
@@ -339,10 +337,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
-          CidrIp: 0.0.0.0/0  # Permite trfico IPv4 desde cualquier origen
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
+          CidrIp: 0.0.0.0/0 # Permite trfico IPv4 desde cualquier origen
 
   GSWEB:
     Type: AWS::EC2::SecurityGroup
