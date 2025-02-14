@@ -1,0 +1,159 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Plantilla para la tarea 4_2"
+Parameters:
+  EnvironmentType:
+    Description: "Specify the Environment type of the stack."
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - test
+      - prod
+  CreateEC2:
+    Description: "Create EC2 instance"
+    Type: String
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+  InstanceType:
+    Description: "Instance type"
+    Type: String
+    Default: "t2.micro"
+    AllowedValues:
+      - "t2.micro"
+      - "t2.small"
+      - "t2.medium"
+Mappings:
+  EnvironmentToInstanceType:
+    dev:
+      InstanceType: t2.micro
+    test:
+      InstanceType: t2.small
+    prod:
+      InstanceType: t2.medium
+Rules:
+  TypeEc2:
+    Assertions:
+      - Assert:
+          "Fn::Contains":
+            - ["t2.micro", "t2.small", "t2.medium"]
+            - !Ref InstanceType
+    Assert: "true"
+
+Conditions:
+  CreateEC2: !Equals [!Ref CreateEC2, "true"]
+
+
+
+
+Resources:
+  # VPC
+ VPC421:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: "10.0.0.0/16"
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: VPC-4-2-1
+#Subred públicas
+PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC421
+      CidrBlock: "10.0.0.0/24"
+      AvailabilityZone: "us-east-1a"
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: Public-Subnet-4-2-1
+#   #Internet Gateway
+# InternetGateway:
+#     Type: AWS::EC2::InternetGateway
+#     Properties:
+#       Tags:
+#         - Key: Name
+#           Value: InternetGateway-4-2-1
+
+# AttachGateway:
+#     Type: AWS::EC2::VPCGatewayAttachment
+#     Properties:
+#       VpcId: !Ref VPC421
+#       InternetGatewayId: !Ref InternetGateway
+
+#   # Route Table
+# RouteTable:
+#     Type: AWS::EC2::RouteTable
+#     Properties:
+#       VpcId: !Ref VPC421
+#       Tags:
+#         - Key: Name
+#           Value: RouteTable-4-2-1
+# PublicRoute:
+#     Type: AWS::EC2::Route
+#     DependsOn: AttachGateway
+#     Properties:
+#       RouteTableId: !Ref RouteTable
+#       DestinationCidrBlock: "0.0.0.0/0"
+#       GatewayId: !Ref InternetGateway
+
+# AssociateRouteTable:
+#     Type: AWS::EC2::SubnetRouteTableAssociation
+#     Properties:
+#       SubnetId: !Ref PublicSubnet
+#       RouteTableId: !Ref RouteTable
+
+#   # Security Group
+# WebAppSecurityGroup:
+#     Type: AWS::EC2::SecurityGroup
+#     Properties:
+#       GroupName: !Join ["-", [webapp-security-group, !Ref EnvironmentType]]
+#       GroupDescription: "Allow HTTP/HTTPS and SSH inbound and outbound traffic"
+#       SecurityGroupIngress:
+#         - IpProtocol: tcp
+#           FromPort: 80
+#           ToPort: 80
+#           CidrIp: "0.0.0.0/0"
+#         - IpProtocol: tcp
+#           FromPort: 443
+#           ToPort: 443
+#           CidrIp: "0.0.0.0/0"
+#         - IpProtocol: tcp
+#           FromPort: 22
+#           ToPort: 22
+#           CidrIp: "0.0.0.0/0"
+#       VpcId: !Ref VPC421
+
+#   # EC2 Instance
+# WebAppInstance:
+#     Type: AWS::EC2::Instance
+#     Condition: CreateEC2
+#     Properties:
+#       AvailabilityZone: "us-east-1a"
+#       ImageId: "ami-0c55b159cbfafe1f0"
+#       InstanceType:
+#         !FindInMap [
+#           EnvironmentToInstanceType,
+#           !Ref EnvironmentType,
+#           InstanceType,
+#         ]
+#       KeyName: !Ref KeyPairName
+#       SecurityGroupIds:
+#         - !GetAtt WebAppSecurityGroup.GroupId
+#       SubnetId: !Ref PublicSubnet
+#       Tags:
+#         - Key: Name
+#           Value: !Join ["-", [webapp-instance, !Ref EnvironmentType]]
+
+Outputs:
+  WebAppInstanceID:
+    Value: !Ref WebAppInstance
+    Description: "ID de la instancia EC2"
+  WebAppSecurityGroupID:
+    Value: !GetAtt WebAppSecurityGroup.GroupId
+    Description: "ID del grupo de seguridad"
+  WebAppPublicIP:
+    Value: !GetAtt WebAppInstance.PublicIp
+    Description: "IP pública de la instancia EC2"
