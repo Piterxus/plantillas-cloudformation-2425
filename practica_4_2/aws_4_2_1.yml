@@ -81,7 +81,7 @@ Resources:
       SubnetId: !Ref PublicSubnet1
       Tags:
         - Key: Name
-          Value: !Join ["-", [!GetAtt PublicSubnet1.AvailabilityZone, "WebAppInstance"]] 
+          Value: !Join ["-", [!GetAtt PublicSubnet1.AvailabilityZone, "Pedro"]] 
 
 # Outputs:
 #   WebAppInstanceID:
