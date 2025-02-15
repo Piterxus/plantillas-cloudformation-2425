@@ -59,7 +59,7 @@ Resources:
         - Key: Name
           Value: VPC-4-2-1
 #Subred públicas
-PublicSubnet:
+ PublicSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC421
@@ -147,13 +147,13 @@ PublicSubnet:
 #         - Key: Name
 #           Value: !Join ["-", [webapp-instance, !Ref EnvironmentType]]
 
-Outputs:
-  WebAppInstanceID:
-    Value: !Ref WebAppInstance
-    Description: "ID de la instancia EC2"
-  WebAppSecurityGroupID:
-    Value: !GetAtt WebAppSecurityGroup.GroupId
-    Description: "ID del grupo de seguridad"
-  WebAppPublicIP:
-    Value: !GetAtt WebAppInstance.PublicIp
-    Description: "IP pública de la instancia EC2"
+# Outputs:
+#   WebAppInstanceID:
+#     Value: !Ref WebAppInstance
+#     Description: "ID de la instancia EC2"
+#   WebAppSecurityGroupID:
+#     Value: !GetAtt WebAppSecurityGroup.GroupId
+#     Description: "ID del grupo de seguridad"
+#   WebAppPublicIP:
+#     Value: !GetAtt WebAppInstance.PublicIp
+#     Description: "IP pública de la instancia EC2"
