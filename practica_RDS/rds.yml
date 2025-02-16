@@ -91,6 +91,17 @@ Resources:
           ToPort: 3306
           CidrIp: 0.0.0.0/0
 
+  WebAppDataBaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Join ["-", [webapp-db-security-group, !Ref EnvironmentType]]
+      GroupDescription: "Allow PostgreSQL inbound and outbound traffic"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !GetAtt WebAppSecurityGroup.GroupId
+
   WebAppEIP:
     Type: AWS::EC2::EIP
     Properties:
@@ -105,10 +116,11 @@ Resources:
     Properties:
       DBInstanceIdentifier: !Ref DBInstanceIdentifier
       VPCSecurityGroups:
+        - !GetAtt WebAppDataBaseSecurityGroup.GroupId
         - !GetAtt WebAppSecurityGroup.GroupId
       AllocatedStorage: "20"
       DBInstanceClass: db.t3.micro
-      Engine: mysql
+      Engine: postgres
       MasterUsername: !Ref DBUsername
       MasterUserPassword: !Ref DBPassword
       DBName: !Ref DBName
@@ -119,6 +131,10 @@ Resources:
     UpdateReplacePolicy: Snapshot
 
 Outputs:
+  WebAppDataBaseSecurityGroup:
+    Description: "Security group for the database"
+    Value: !GetAtt WebAppDataBaseSecurityGroup.GroupId
+
   WebsiteURL:
     Value: !Sub http://${WebAppEIP}
     Description: WebApp URL
