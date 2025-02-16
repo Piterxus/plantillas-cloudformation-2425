@@ -81,7 +81,7 @@ Resources:
       SubnetId: !Ref PublicSubnet1
       Tags:
         - Key: Name
-          Value: !Join ["-", [!GetAtt PublicSubnet1.AvailabilityZone, "Pedro"]] 
+          Value: !Join ["-", [!GetAtt PublicSubnet1.AvailabilityZone, "Pedro", !Ref "AWS::Region"]] 
         - Key: VPCID
           Value: !GetAtt VPC421.VpcId
 
