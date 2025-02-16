@@ -72,7 +72,7 @@ Resources:
     Type: AWS::EC2::Instance
     Condition: CreateEC2
     Properties:
-      AvailabilityZone: "us-east-1a"
+      AvailabilityZone: !Select [ 0, !GetAZs "" ]
       ImageId: "ami-04b4f1a9cf54c11d0"
       InstanceType:
         Ref: InstanceType
