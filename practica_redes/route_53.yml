@@ -1,0 +1,67 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Plantilla para la tarea de redes Route 53"
+Resources:
+  #Instancia EC2 Ubuntu server
+  EC2UbuntuServer:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: "ami-053a45fff0a704a47"
+      InstanceType: "t2.micro"
+      KeyName: "vockey"
+      SecurityGroups:
+        - !Ref WebAppSecurityGroup
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          dnf install -y httpd 
+          systemctl start httpd.service
+          systemctl enable httpd.service
+          echo "<h1>Welcome to Apache Web Server</h1>" > /var/www/html/index.html
+      Tags:
+        - Key: Name
+          Value: "EC2-Ubuntu-Server"
+  #Instancia EC2 Windows server
+  EC2WindowsServer:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: "ami-07fa5275316057f54"
+      InstanceType: "t3.micro"
+      KeyName: "vockey"
+      SecurityGroups:
+        - !Ref WebAppSecurityGroup
+      Tags:
+        - Key: Name
+          Value: "EC2-Windows-Server"
+  
+  WebAppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: "SecurityGroup-WebApp"
+      GroupDescription: "Allow HTTP/HTTPS and SSH inbound and outbound traffic"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+
+  R53:
+    Type: AWS::Route53::HostedZone
+    Properties:
+      Name: "vockey.com"
+      HostedZoneConfig:
+        Comment: "Hosted Zone for as.com"
+      R53RecordSet:
+        Type: "A"
+        Name: "as.com"
+        AliasTarget:
+          DNSName: !GetAtt EC2UbuntuServer.PublicIp
+          HostedZoneId: !GetAtt EC2UbuntuServer.PublicHostedZoneId
+        
