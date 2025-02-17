@@ -32,7 +32,7 @@ Resources:
       Tags:
         - Key: Name
           Value: "EC2-Windows-Server"
-  
+
   WebAppSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -54,18 +54,24 @@ Resources:
         - IpProtocol: tcp
           FromPort: 3389
           ToPort: 3389
-          CidrIp: 0.0.0.0/0 
+          CidrIp: 0.0.0.0/0
 
-  R53:
-    Type: AWS::Route53::HostedZone
+  DNS:
+    Type: "AWS::Route53::HostedZone"
     Properties:
-      Name: "vockey.com"
       HostedZoneConfig:
-        Comment: "Hosted Zone for as.com"
-      R53RecordSet:
-        Type: "A"
-        Name: "as.com"
-        AliasTarget:
-          DNSName: !GetAtt EC2UbuntuServer.PublicIp
-          HostedZoneId: !GetAtt EC2UbuntuServer.PublicHostedZoneId
-        
+        Comment: 'Hosted zone for WebApp'
+      Name: 'as.com'
+
+
+  myDNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref DNS
+      Name: www.as.com
+      ResourceRecords:
+      - !GetAtt EC2UbuntuServer.PublicIp
+      TTL: 900
+      Type: A
+
+
