@@ -75,7 +75,7 @@ Resources:
       VPCs:
         - VPCId: !Ref VPC421
           VPCRegion: !Ref AWS::Region
-      HostedZoneType: Private 
+      PrivateZone: true
 
 
   myDNSRecord:
@@ -84,7 +84,7 @@ Resources:
       HostedZoneId: !Ref DNS
       Name: www.as.com
       ResourceRecords:
-      - !GetAtt EC2UbuntuServer.PublicIp
+      - !GetAtt EC2UbuntuServer.PrivateIp
       TTL: 900
       Type: A
 
