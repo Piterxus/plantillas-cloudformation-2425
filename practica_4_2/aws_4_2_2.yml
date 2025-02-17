@@ -1,32 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: "Plantilla para la tarea 4_2_1"
 Parameters:
-  Mappings:
-    # AvailabilityZone:
-    #   us-east-1:
-    #     Name: us-east-1a
-    #   us-west-1:
-    #     Name: us-west-1a
-    #   us-west-2:
-    #     Name: us-west-2a
-    AvailabilityZone:
-      us-east-1:
-        AZ1: us-east-1a
-        AZ2: us-east-1b
-        AZ3: us-east-1c
-      us-east-2:
-        AZ1: us-east-2a
-        AZ2: us-east-2b
-        AZ3: us-east-2c
-      us-west-1:
-        AZ1: us-west-1a
-        AZ2: us-west-1b
-        AZ3: us-west-1c
-      us-west-2:
-        AZ1: us-west-2a
-        AZ2: us-west-2b
-        AZ3: us-west-2c
-        
   CreateIGW:
     Description: "Create Internet Gateway"
     Type: String
@@ -35,10 +9,19 @@ Parameters:
       - "true"
       - "false"
 
-Conditions:
-  CreateIGW: !Equals [!Ref CreateIGW, "true", "false"]
+  Conditions:
+    CreateIGW: !Equals [!Ref CreateIGW, "true", "false"]
+
+  Mappings:
+    RegionMap:
+      us-east-1: !GetAZs us-east-1
+      us-west-1: !GetAZs us-west-1
+      eu-west-1: !GetAZs eu-west-1
+      ap-southeast-1: !GetAZs ap-southeast-1
+      ap-northeast-1: !GetAZs ap-northeast-1
+
 Resources:
-  VPC422:
+  VPC422A:
     Type: AWS::EC2::VPC
     Properties:
       CidrBlock: "10.0.0.0/20"
@@ -46,4 +29,36 @@ Resources:
       EnableDnsHostnames: true
       Tags:
         - Key: Name
-          Value: VPC-4-2-2
+          Value: VPC-4-2-2-A
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC422A
+      CidrBlock: "10.0.0.0/20"
+      AvailabilityZone:
+        !Select [0, !FindInMap [RegionMap, !Ref "AWS::Region", "RegionName"]]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: PublicSubnet-4-2-2-A
+
+  VPC422B:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: "172.16.0.0/20"
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: VPC-4-2-2-B
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC422B
+      CidrBlock: "172.16.0.0/20"
+      AvailabilityZone:
+        !Select [1, !FindInMap [RegionMap, !Ref "AWS::Region", "RegionName"]]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: PublicSubnet-4-2-2-B
