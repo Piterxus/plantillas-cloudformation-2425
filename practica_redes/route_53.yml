@@ -1,6 +1,16 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: "Plantilla para la tarea de redes Route 53"
 Resources:
+  #VPC
+  VPC421:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: "10.0.0.0/16"
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: VPC-4-2-1
   #Instancia EC2 Ubuntu server
   EC2UbuntuServer:
     Type: AWS::EC2::Instance
@@ -62,6 +72,10 @@ Resources:
       HostedZoneConfig:
         Comment: 'Hosted zone for WebApp'
       Name: 'as.com'
+      VPCs:
+        - VPCId: !Ref VPC421
+          VPCRegion: !Ref AWS::Region
+      HostedZoneType: Private 
 
 
   myDNSRecord:
