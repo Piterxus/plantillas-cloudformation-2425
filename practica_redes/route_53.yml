@@ -146,7 +146,7 @@ Resources:
       ResourceRecords:
       - !GetAtt EC2AWSLinuxServer.PrivateIp
       TTL: 300
-      Type: CNAME
+      Type: A
 
 
 
