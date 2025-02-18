@@ -1,0 +1,153 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Plantilla para la tarea de redes Route 53"
+
+Resources:
+  #VPC
+  VPC421:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: "10.0.0.0/16"
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: VPC-4-2-1
+  # Subredes
+  # PrivateSubnet:
+  #   Type: AWS::EC2::Subnet
+  #   Properties:
+  #     VpcId: !Ref VPC421
+  #     CidrBlock: "10.0.0.0/20"
+  #     AvailabilityZone: "us-east-1a"
+  #     MapPublicIpOnLaunch: true
+  #     Tags:
+  #       - Key: Name
+  #         Value: PrivateSubnet
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC421
+      CidrBlock: "10.0.16.0/20"
+      AvailabilityZone: "us-east-1a"
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: PublicSubnet
+          
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: InternetGateway
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC421
+      InternetGatewayId: !Ref InternetGateway
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC421
+      Tags:
+        - Key: Name
+          Value: RouteTable
+  Route:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !Ref InternetGateway
+
+  SubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref RouteTable
+    
+
+
+  #Instancia EC2 Ubuntu server
+  EC2AWSLinuxServer:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: "ami-053a45fff0a704a47"
+      InstanceType: "t2.micro"
+      KeyName: "vockey"
+      SecurityGroupIds:
+        - !GetAtt WebAppSecurityGroup.GroupId
+      SubnetId: !Ref PublicSubnet
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          dnf install -y httpd 
+          systemctl start httpd.service
+          systemctl enable httpd.service
+          echo "<h1>Welcome to Apache Web Server</h1>" > /var/www/html/index.html
+      Tags:
+        - Key: Name
+          Value: "EC2-AWSLinux-Server"
+  #Instancia EC2 Windows server
+  EC2WindowsServer:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: "ami-07fa5275316057f54"
+      InstanceType: "t3.micro"
+      KeyName: "vockey"
+      SecurityGroupIds:
+        - !GetAtt WebAppSecurityGroup.GroupId
+      SubnetId: !Ref PublicSubnet
+      Tags:
+        - Key: Name
+          Value: "EC2-Windows-Server"
+
+  WebAppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: "SecurityGroup-WebApp"
+      GroupDescription: "Allow HTTP/HTTPS and SSH inbound and outbound traffic"
+      VpcId: !Ref VPC421
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 3389
+          ToPort: 3389
+          CidrIp: 0.0.0.0/0
+
+  DNS:
+    Type: "AWS::Route53::HostedZone"
+    Properties:
+      HostedZoneConfig:
+        Comment: 'Hosted zone for WebApp'
+      Name: 'as.com'
+      VPCs:
+        - VPCId: !Ref VPC421
+          VPCRegion: !Ref AWS::Region
+      PrivateZone: true
+
+
+  myDNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref DNS
+      Name: www.as.com
+      ResourceRecords:
+      - !GetAtt EC2AWSLinuxServer.PrivateIp
+      TTL: 300
+      Type: CNAME
+
+
+
+
