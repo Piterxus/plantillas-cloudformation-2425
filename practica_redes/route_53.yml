@@ -69,7 +69,7 @@ Resources:
 
 
   #Instancia EC2 Ubuntu server
-  EC2UbuntuServer:
+  EC2AWSLinuxServer:
     Type: AWS::EC2::Instance
     Properties:
       ImageId: "ami-053a45fff0a704a47"
@@ -87,7 +87,7 @@ Resources:
           echo "<h1>Welcome to Apache Web Server</h1>" > /var/www/html/index.html
       Tags:
         - Key: Name
-          Value: "EC2-Ubuntu-Server"
+          Value: "EC2-AWSLinux-Server"
   #Instancia EC2 Windows server
   EC2WindowsServer:
     Type: AWS::EC2::Instance
@@ -144,9 +144,9 @@ Resources:
       HostedZoneId: !Ref DNS
       Name: www.as.com
       ResourceRecords:
-      - !GetAtt EC2UbuntuServer.PrivateIp
+      - !GetAtt EC2AWSLinuxServer.PrivateIp
       TTL: 300
-      Type: A
+      Type: CNAME
 
 
 
