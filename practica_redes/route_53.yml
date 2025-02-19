@@ -93,7 +93,7 @@ Resources:
     Type: AWS::EC2::Instance
     Properties:
       ImageId: "ami-07fa5275316057f54"
-      InstanceType: "t3.micro"
+      InstanceType: "c5.large"
       KeyName: "vockey"
       SecurityGroupIds:
         - !GetAtt WebAppSecurityGroup.GroupId
@@ -125,6 +125,36 @@ Resources:
           FromPort: 3389
           ToPort: 3389
           CidrIp: 0.0.0.0/0
+
+  WebAppBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: "www.elpais.as.com"
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: ObjectWriter
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+  
+  WebAppBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WebAppBucket
+      PolicyDocument:
+        Statement:
+          - Action: "s3:GetObject"
+            Effect: "Allow"
+            Resource: !Sub "arn:aws:s3:::${WebAppBucket}/*"
+            Principal: "*"
+            
+        Version: "2012-10-17"
+      
 
   DNS:
     Type: "AWS::Route53::HostedZone"
