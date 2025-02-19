@@ -10,11 +10,11 @@ Parameters:
 
 Conditions:
   CreateIGWAfirmative: !Equals [!Ref CreateIGW, "true"]
-    
+
 #     !Equals [!Ref CreateIGW, "true"]
 #   CreateIGWNegative:
 #     !Equals [!Ref CreateIGW, "false"]
-  
+
 #     !If [CreateIGW, !Ref InternetGateway, !Ref "AWS::NoValue"]
 #     # CreateIGW: !Equals ["true", "false"]
 
@@ -69,7 +69,7 @@ Resources:
 
   InternetGateway:
     Type: AWS::EC2::InternetGateway
-    Condition: !If [CreateIGW, InternetGateway, "AWS::NoValue"]
+    Condition: !If [CreateIGWAfirmative, !Ref InternetGateway, !Ref "AWS::NoValue"]
     Properties:
       Tags:
         - Key: Name
