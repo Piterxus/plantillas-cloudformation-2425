@@ -126,6 +126,38 @@ Resources:
           ToPort: 3389
           CidrIp: 0.0.0.0/0
 
+  WebAppBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: "www.elpais.as.com"
+      AccessControl: PublicRead
+      MetricsConfiguration:
+        - Id: EntireBucket
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+        # RoutingRules:
+        #   - RedirectRule:
+        #       HostName: www.elpais.com
+        #       HttpRedirectCode: 301
+        #       Protocol: https
+        #       ReplaceKeyPrefixWith: ""
+        DeletionPolicy: Retain
+  
+  WebAppBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WebAppBucket
+      PolicyDocument:
+        Statement:
+          - Action: "s3:GetObject"
+            Effect: "Allow"
+            Resource: !Sub "arn:aws:s3:::${WebAppBucket}/*"
+            Principal: "*"
+            
+        Version: "2012-10-17"
+      
+
   DNS:
     Type: "AWS::Route53::HostedZone"
     Properties:
