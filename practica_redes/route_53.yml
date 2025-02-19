@@ -93,7 +93,7 @@ Resources:
     Type: AWS::EC2::Instance
     Properties:
       ImageId: "ami-07fa5275316057f54"
-      InstanceType: "t3.micro"
+      InstanceType: "c5.large"
       KeyName: "vockey"
       SecurityGroupIds:
         - !GetAtt WebAppSecurityGroup.GroupId
