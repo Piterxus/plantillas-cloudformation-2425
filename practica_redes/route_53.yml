@@ -130,19 +130,17 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: "www.elpais.as.com"
-      AccessControl: PublicRead
-      MetricsConfiguration:
-        - Id: EntireBucket
       WebsiteConfiguration:
         IndexDocument: index.html
         ErrorDocument: error.html
-        # RoutingRules:
-        #   - RedirectRule:
-        #       HostName: www.elpais.com
-        #       HttpRedirectCode: 301
-        #       Protocol: https
-        #       ReplaceKeyPrefixWith: ""
-        DeletionPolicy: Retain
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: ObjectWriter
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
   
   WebAppBucketPolicy:
     Type: AWS::S3::BucketPolicy
