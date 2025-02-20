@@ -9,74 +9,30 @@ Parameters:
     ConstraintDescription: "Must be true or false"
 
 Conditions:
-  CreateIGWAfirmative: !Equals [!Ref CreateIGW, "true"]
+  # CreateIGW:
+  #   Description: "Create Internet Gateway"
+  #   Type: String
+  #   Default: "true"
+  #   AllowedValues: ["true", "false"]
+  #   ConstraintDescription: "Must be true or false"
 
-#     !Equals [!Ref CreateIGW, "true"]
-#   CreateIGWNegative:
-#     !Equals [!Ref CreateIGW, "false"]
+  YesCreateIGW: !Equals [!Ref CreateIGW, "true"]
 
-#     !If [CreateIGW, !Ref InternetGateway, !Ref "AWS::NoValue"]
-#     # CreateIGW: !Equals ["true", "false"]
-
-# Mappings:
-#   RegionMap:
-#     us-east-1: !GetAZs us-east-1
-#     us-west-1: !GetAZs us-west-1
-#     eu-west-1: !GetAZs eu-west-1
-#     ap-southeast-1: !GetAZs ap-southeast-1
-#     ap-northeast-1: !GetAZs ap-northeast-1
+  CreateIGWAffirmative:
+    !If [YesCreateIGW, true, false]
+    # !Equals [!Ref CreateIGW, "true"]
 
 Resources:
-  VPC422A:
-    Type: AWS::EC2::VPC
-    Properties:
-      CidrBlock: "10.0.0.0/20"
-      EnableDnsSupport: true
-      EnableDnsHostnames: true
-      Tags:
-        - Key: Name
-          Value: VPC-4-2-2-A
-  PublicSubnet1:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC422A
-      CidrBlock: "10.0.0.0/20"
-      AvailabilityZone: !Select [0, !Ref "AWS::Region", "RegionName"]
-      MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: PublicSubnet-4-2-2-A
-
-  VPC422B:
-    Type: AWS::EC2::VPC
-    Properties:
-      CidrBlock: "172.16.0.0/20"
-      EnableDnsSupport: true
-      EnableDnsHostnames: true
-      Tags:
-        - Key: Name
-          Value: VPC-4-2-2-B
-  PublicSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC422B
-      CidrBlock: "172.16.0.0/20"
-      AvailabilityZone: !Select [1, !Ref "AWS::Region", "RegionName"]
-      MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: PublicSubnet-4-2-2-B
-
   InternetGateway:
     Type: AWS::EC2::InternetGateway
-    Condition: !If [CreateIGWAfirmative, !Ref InternetGateway, !Ref "AWS::NoValue"]
+    Condition: CreateIGWAffirmative
     Properties:
       Tags:
         - Key: Name
-          Value: IGW-4-2-2-Afirmative
+          Value: IGW-4-2-2-Afirmative-Redundant
   AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
-    Condition: CreateIGWAfirmative
+    Condition: CreateIGWAffirmative
     Properties:
-      VpcId: !Ref VPC422A
+      # VpcId: !Ref VPC422A
       InternetGatewayId: !Ref InternetGateway
