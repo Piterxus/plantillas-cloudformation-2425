@@ -18,21 +18,32 @@ Conditions:
 
   YesCreateIGW: !Equals [!Ref CreateIGW, "true"]
 
-  CreateIGWAffirmative:
-    !If [YesCreateIGW, "true", "false"]
-    # !Equals [!Ref CreateIGW, "true"]
+  # CreateIGWAffirmative:
+  #   !If [YesCreateIGW, "true", "false"]
+  #   # !Equals [!Ref CreateIGW, "true"]
 
 Resources:
+  VPC421:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: "10.0.0.0/16"
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: VPC-4-2-2
+
   InternetGateway:
     Type: AWS::EC2::InternetGateway
-    Condition: CreateIGWAffirmative
+    Condition: YesCreateIGW
     Properties:
+      VpcId: !Ref VPC421
       Tags:
         - Key: Name
           Value: IGW-4-2-2-Afirmative-Redundant
   AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
-    Condition: CreateIGWAffirmative
+    Condition: YesCreateIGW
     Properties:
-      # VpcId: !Ref VPC422A
+      VpcId: !Ref VPC421
       InternetGatewayId: !Ref InternetGateway
