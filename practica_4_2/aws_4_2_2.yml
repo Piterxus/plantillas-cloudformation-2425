@@ -19,7 +19,7 @@ Conditions:
   YesCreateIGW: !Equals [!Ref CreateIGW, "true"]
 
   CreateIGWAffirmative:
-    !If [YesCreateIGW, true, false]
+    !If [YesCreateIGW, "true", "false"]
     # !Equals [!Ref CreateIGW, "true"]
 
 Resources:
