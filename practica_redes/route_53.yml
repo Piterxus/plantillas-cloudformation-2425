@@ -177,6 +177,18 @@ Resources:
       - !GetAtt EC2AWSLinuxServer.PrivateIp
       TTL: 300
       Type: A
+  
+  WebAppBucketDNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref DNS
+      Name: "www.elpais.as.com"
+      Type: A
+      AliasTarget:
+        DNSName: !Sub "s3-website-${AWS::Region}.amazonaws.com"
+        HostedZoneId: "Z3AQBSTGFYJSTF" # ID del Hosted Zone de S3 Website Hosting
+        EvaluateTargetHealth: false
+
 
 
 
