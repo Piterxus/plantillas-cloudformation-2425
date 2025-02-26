@@ -1,0 +1,8 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+     ALBpublic:
+         Type: String
+         Default: "internet-facing"
+         AllowedValues: ["internet-facing", "internal"]
+         Description: "Determina si se crea un ALB publico o interno"
+         

@@ -1,0 +1,129 @@
+# 3. Crear un Application Load Balancer (ALB) y un Auto Scaling Group en múltiples zonas de disponibilidad. Habrá un parámetro ALBPublico que me indicará si quiero mostrarlo a Internet el balanceador, y en el esquema del LoadBalancer determinaré con ¡If si es “internet-facing” o “internal”. Los nombres de los recursos serán una combinación del nombre que se escriba por parámetro y por defecto tendrá el valor “vívalalandingzone” que lo unirás usando un Join con tu propio nombre.
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  ALBpublic:
+    Type: String
+    Default: internet-facing
+    AllowedValues:
+      - internet-facing
+      - internal
+    Description: Determina si se crea un ALB publico o interno
+  MyName:
+    Type: String
+    Default: vivalalandingzone
+    Description: Nombre del recurso
+Mappings:
+  RegionToCIDR:
+    us-east-1:
+      VpcCIDR: 10.0.0.0/20
+  RegionToAZ:
+    us-east-1:
+      AZ1: us-east-1a
+      AZ2: us-east-1b
+      AZ3: us-east-1c
+Conditions:
+  ALBpublicCondition: !Equals
+    - !Ref ALBpublic
+    - internet-facing
+Resources:
+
+  MyVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !FindInMap
+        - RegionToCIDR
+        - !Ref AWS::Region
+        - VpcCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Join
+            - '-'
+            - - !Ref MyName
+              - VPC
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: !FindInMap
+        - RegionToCIDR
+        - !Ref AWS::Region
+        - VpcCIDR
+        # Se usa el CIDR correcto
+      AvailabilityZone: !FindInMap
+        - RegionToAZ
+        - !Ref AWS::Region
+        - AZ1
+      MapPublicIpOnLaunch: true
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: !FindInMap
+        - RegionToCIDR
+        - !Ref AWS::Region
+        - VpcCIDR
+        # Se usa el CIDR correcto
+      AvailabilityZone: !FindInMap
+        - RegionToAZ
+        - !Ref AWS::Region
+        - AZ2
+      MapPublicIpOnLaunch: true
+
+  PublicSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: !FindInMap
+        - RegionToCIDR
+        - !Ref AWS::Region
+        - VpcCIDR
+        # Se usa el CIDR correcto
+      AvailabilityZone: !FindInMap
+        - RegionToAZ
+        - !Ref AWS::Region
+        - AZ3
+      MapPublicIpOnLaunch: true
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Join
+            - '-'
+            - - !Ref MyName
+              - IGW
+
+  IGWAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref MyVPC
+      InternetGatewayId: !Ref InternetGateway
+
+  MyALB:
+    Type: AWS::Elastic LoadBalancing::LoadBalancer
+    Properties:
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+        - !Ref PublicSubnet3
+      SecurityGroups:
+        - !Ref MyALBSG
+      LoadBalancerName: !Join
+        - '-'
+        - - !Ref MyName
+          - ALB
+      Scheme: !If
+        - ALBpublicCondition
+        - internet-facing
+        - internal
+      Tags:
+        - Key: Name
+          Value: !Join
+            - '-'
+            - - !Ref MyName
+              - ALB
