@@ -1,0 +1,87 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  AttachIGW:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: "Determina si se adjunta un Internet Gateway"
+
+Mappings:
+  RegionToCIDR:
+    us-east-1:
+      VpcCIDR: "10.0.0.0/20"
+      SubnetCIDR: "10.0.0.0/25"
+    us-west-1:
+      VpcCIDR: "172.16.0.0/20"
+      SubnetCIDR: "172.16.0.0/25"
+
+Conditions:
+  AttachIGWCondition: !Equals [!Ref AttachIGW, "true"]
+
+Resources:
+  MyVPCEast:
+    Type: "AWS::EC2::VPC"
+    Properties:
+      CidrBlock: !FindInMap [RegionToCIDR, "us-east-1", VpcCIDR]
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: "MyVPCEast"
+
+  MyVPCWest:
+    Type: "AWS::EC2::VPC"
+    Properties:
+      CidrBlock: !FindInMap [RegionToCIDR, "us-west-1", VpcCIDR]
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: "MyVPCWest"
+
+  PublicSubnetEast:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId: !Ref MyVPCEast
+      CidrBlock: !FindInMap [RegionToCIDR, "us-east-1", SubnetCIDR]
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+
+  PublicSubnetWest:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId: !Ref MyVPCWest
+      CidrBlock: !FindInMap [RegionToCIDR, "us-west-1", SubnetCIDR]
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+
+  InternetGatewayEast:
+    Type: "AWS::EC2::InternetGateway"
+    Condition: AttachIGWCondition
+    Properties:
+      Tags:
+        - Key: Name
+          Value: "Internet Gateway East"
+
+  InternetGatewayWest:
+    Type: "AWS::EC2::InternetGateway"
+    Condition: AttachIGWCondition
+    Properties:
+      Tags:
+        - Key: Name
+          Value: "Internet Gateway West"
+
+  IGWAttachmentEast:
+    Type: "AWS::EC2::VPCGatewayAttachment"
+    Condition: AttachIGWCondition
+    Properties:
+      VpcId: !Ref MyVPCEast
+      InternetGatewayId: !Ref InternetGatewayEast
+
+  IGWAttachmentWest:
+    Type: "AWS::EC2::VPCGatewayAttachment"
+    Condition: AttachIGWCondition
+    Properties:
+      VpcId: !Ref MyVPCWest
+      InternetGatewayId: !Ref InternetGatewayWest
