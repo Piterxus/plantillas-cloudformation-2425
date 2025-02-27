@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  AttachIGW:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: "Determina si se adjunta un Internet Gateway"
+
+Mappings:
+  RegionToCIDR:
+    us-east-1:
+      VpcCIDR: "10.0.0.0/20"
+    us-west-1:
+      VpcCIDR: "172.16.0.0/20"
+
+Conditions:
+  AttachIGWCondition: !Equals [!Ref AttachIGW, "true"]
+
+Resources:
+  MyVPC:
+    Type: "AWS::EC2::VPC"
+    Properties:
+      CidrBlock: !FindInMap [RegionToCIDR, !Ref "AWS::Region", VpcCIDR]
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: "MyVPCGPT"
+
+  PublicSubnet:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: !FindInMap [RegionToCIDR, !Ref "AWS::Region", VpcCIDR]  # Se usa el CIDR correcto
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+
+  InternetGateway:
+    Type: "AWS::EC2::InternetGateway"
+    Condition: AttachIGWCondition
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !If [AttachIGWCondition, "Internet Gateway Enabled", "Internet Gateway Not Created"]
+
+  IGWAttachment:
+    Type: "AWS::EC2::VPCGatewayAttachment"
+    Condition: AttachIGWCondition
+    Properties:
+      VpcId: !Ref MyVPC
+      InternetGatewayId: !Ref InternetGateway

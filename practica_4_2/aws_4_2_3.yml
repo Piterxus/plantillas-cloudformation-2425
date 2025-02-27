@@ -1,0 +1,130 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+    ALBpublic:
+        Type: String
+        Default: "true"
+        AllowedValues: ["true", "false"]
+        Description: "Determina si se crea un ALB publico o interno"
+
+    ResourcesName:
+        Type: String
+        Default: "vivalalandingzone"
+        Description: "Nombre del recurso"
+
+    Myname:
+        Type: String
+        Default: "Pedro"
+        Description: "Nombre del recurso"
+Conditions:
+    ALBpublicCondition: !Equals [!Ref ALBpublic, "true"]
+
+Resources:
+    MyVPC:
+        Type: "AWS::EC2::VPC"
+        Properties:
+            CidrBlock: "10.0.0.0/16"
+            EnableDnsSupport: true
+            EnableDnsHostnames: true
+            Tags:
+                - Key: Name
+                  Value: !Join ["-", [!Ref ResourcesName, !Ref Myname, "MyVPC"]]
+    Subnet1:
+        Type: "AWS::EC2::Subnet"
+        Properties:
+            VpcId: !Ref MyVPC
+            CidrBlock: "10.0.1.0/20"
+            AvailabilityZone: "us-east-1a"
+            MapPublicIpOnLaunch: true
+            Tags:
+                - Key: Name
+                  Value:
+                      !Join ["-", [!Ref ResourcesName, !Ref Myname, "Subnet1"]]
+    Subnet2:
+        Type: "AWS::EC2::Subnet"
+        Properties:
+            VpcId: !Ref MyVPC
+            CidrBlock: "10.0.16.0/20"
+            AvailabilityZone: "us-east-1b"
+            MapPublicIpOnLaunch: true
+            Tags:
+                - Key: Name
+                  Value:
+                      !Join ["-", [!Ref ResourcesName, !Ref Myname, "Subnet2"]]
+    InternetGateway:
+        Type: "AWS::EC2::InternetGateway"
+        Properties:
+            Tags:
+                - Key: Name
+                  Value:
+                      !Join [
+                          "-",
+                          [!Ref ResourcesName, !Ref Myname, "InternetGateway"],
+                      ]
+    AttachGateway:
+        Type: "AWS::EC2::VPCGatewayAttachment"
+        Properties:
+            VpcId: !Ref MyVPC
+            InternetGatewayId: !Ref InternetGateway
+
+    RouteTable:
+        Type: "AWS::EC2::RouteTable"
+        Properties:
+            VpcId: !Ref MyVPC
+            Tags:
+                - Key: Name
+                  Value:
+                     !Join [
+                        "-",
+                          [
+                            !Ref ResourcesName,
+                            !Ref Myname,
+                            "RouteTable",
+                            ],
+                              ]
+    MyALB:
+        Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
+        Properties:
+            Name: "MyALB"
+            Scheme: !If [ALBpublicCondition, "internet-facing", "internal"]
+            Subnets:
+                - !Ref Subnet1
+                - !Ref Subnet2
+            Tags:
+                - Key: Name
+                  Value: !Join ["-", [!Ref ResourcesName, !Ref Myname, "MyALB"]]
+
+    MyLaunchTemplate:
+        Type: "AWS::EC2::LaunchTemplate"
+        Properties:
+            LaunchTemplateName: "MyLaunchTemplate"
+            LaunchTemplateData:
+                ImageId: "ami-05b10e08d247fb927"
+                InstanceType: "t2.micro"
+                KeyName: "vockey"
+       
+
+    MyAutoScalingGroup:
+        Type: "AWS::AutoScaling::AutoScalingGroup"
+        Properties:
+            # LaunchConfigurationName: !Ref MyLaunchConfiguration
+            MinSize: "1"
+            MaxSize: "1"
+            DesiredCapacity: "1"
+            VPCZoneIdentifier: 
+                - !Ref Subnet1 
+                - !Ref Subnet2
+            LaunchTemplate:
+                LaunchTemplateId: !Ref MyLaunchTemplate
+                Version: !GetAtt MyLaunchTemplate.LatestVersionNumber
+            Tags:
+                - Key: Name
+                  Value:
+                      !Join [
+                          "-",
+                          [
+                              !Ref ResourcesName,
+                              !Ref Myname,
+                              "MyAutoScalingGroup",
+                          ],
+                      ]
+                  PropagateAtLaunch: "true"

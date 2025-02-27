@@ -1,12 +1,12 @@
-AWSTemplateFormatVersion: "2010-09-09"
-Description: "Plantilla para la tarea de redes Route 53"
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Plantilla para la tarea de redes Route 53
 
 Resources:
   #VPC
   VPC421:
     Type: AWS::EC2::VPC
     Properties:
-      CidrBlock: "10.0.0.0/16"
+      CidrBlock: 10.0.0.0/16
       EnableDnsSupport: true
       EnableDnsHostnames: true
       Tags:
@@ -27,13 +27,13 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC421
-      CidrBlock: "10.0.16.0/20"
-      AvailabilityZone: "us-east-1a"
+      CidrBlock: 10.0.16.0/20
+      AvailabilityZone: us-east-1a
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
           Value: PublicSubnet
-          
+
   InternetGateway:
     Type: AWS::EC2::InternetGateway
     Properties:
@@ -57,7 +57,7 @@ Resources:
     DependsOn: AttachGateway
     Properties:
       RouteTableId: !Ref RouteTable
-      DestinationCidrBlock: "0.0.0.0/0"
+      DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
 
   SubnetRouteTableAssociation:
@@ -65,48 +65,46 @@ Resources:
     Properties:
       SubnetId: !Ref PublicSubnet
       RouteTableId: !Ref RouteTable
-    
-
 
   #Instancia EC2 Ubuntu server
   EC2AWSLinuxServer:
     Type: AWS::EC2::Instance
     Properties:
-      ImageId: "ami-053a45fff0a704a47"
-      InstanceType: "t2.micro"
-      KeyName: "vockey"
+      ImageId: ami-053a45fff0a704a47
+      InstanceType: t2.micro
+      KeyName: vockey
       SecurityGroupIds:
         - !GetAtt WebAppSecurityGroup.GroupId
       SubnetId: !Ref PublicSubnet
-      UserData:
-        Fn::Base64: !Sub |
+      UserData: !Base64
+        Fn::Sub: |
           #!/bin/bash
-          dnf install -y httpd 
+          dnf install -y httpd
           systemctl start httpd.service
           systemctl enable httpd.service
           echo "<h1>Welcome to Apache Web Server</h1>" > /var/www/html/index.html
       Tags:
         - Key: Name
-          Value: "EC2-AWSLinux-Server"
+          Value: EC2-AWSLinux-Server
   #Instancia EC2 Windows server
   EC2WindowsServer:
     Type: AWS::EC2::Instance
     Properties:
-      ImageId: "ami-07fa5275316057f54"
-      InstanceType: "c5.large"
-      KeyName: "vockey"
+      ImageId: ami-07fa5275316057f54
+      InstanceType: c5.large
+      KeyName: vockey
       SecurityGroupIds:
         - !GetAtt WebAppSecurityGroup.GroupId
       SubnetId: !Ref PublicSubnet
       Tags:
         - Key: Name
-          Value: "EC2-Windows-Server"
+          Value: EC2-Windows-Server
 
   WebAppSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupName: "SecurityGroup-WebApp"
-      GroupDescription: "Allow HTTP/HTTPS and SSH inbound and outbound traffic"
+      GroupName: SecurityGroup-WebApp
+      GroupDescription: Allow HTTP/HTTPS and SSH inbound and outbound traffic
       VpcId: !Ref VPC421
       SecurityGroupIngress:
         - IpProtocol: tcp
@@ -129,7 +127,7 @@ Resources:
   WebAppBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: "www.elpais.as.com"
+      BucketName: www.elpais.as.com
       WebsiteConfiguration:
         IndexDocument: index.html
         ErrorDocument: error.html
@@ -141,32 +139,30 @@ Resources:
         BlockPublicPolicy: false
         IgnorePublicAcls: false
         RestrictPublicBuckets: false
-  
+
   WebAppBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
       Bucket: !Ref WebAppBucket
       PolicyDocument:
         Statement:
-          - Action: "s3:GetObject"
-            Effect: "Allow"
-            Resource: !Sub "arn:aws:s3:::${WebAppBucket}/*"
-            Principal: "*"
-            
-        Version: "2012-10-17"
-      
+          - Action: s3:GetObject
+            Effect: Allow
+            Resource: !Sub arn:aws:s3:::${WebAppBucket}/*
+            Principal: '*'
+
+        Version: '2012-10-17'
 
   DNS:
-    Type: "AWS::Route53::HostedZone"
+    Type: AWS::Route53::HostedZone
     Properties:
       HostedZoneConfig:
-        Comment: 'Hosted zone for WebApp'
-      Name: 'as.com'
+        Comment: Hosted zone for WebApp
+      Name: as.com
       VPCs:
         - VPCId: !Ref VPC421
           VPCRegion: !Ref AWS::Region
       PrivateZone: true
-
 
   myDNSRecord:
     Type: AWS::Route53::RecordSet
@@ -174,22 +170,17 @@ Resources:
       HostedZoneId: !Ref DNS
       Name: www.as.com
       ResourceRecords:
-      - !GetAtt EC2AWSLinuxServer.PrivateIp
+        - !GetAtt EC2AWSLinuxServer.PrivateIp
       TTL: 300
       Type: A
-  
+
   WebAppBucketDNSRecord:
     Type: AWS::Route53::RecordSet
     Properties:
       HostedZoneId: !Ref DNS
-      Name: "www.elpais.as.com"
+      Name: www.elpais.as.com
       Type: A
       AliasTarget:
-        DNSName: !Sub "s3-website-${AWS::Region}.amazonaws.com"
-        HostedZoneId: "Z3AQBSTGFYJSTF" # ID del Hosted Zone de S3 Website Hosting
+        DNSName: !Sub s3-website-${AWS::Region}.amazonaws.com
+        HostedZoneId: Z3AQBSTGFYJSTF # ID del Hosted Zone de S3 Website Hosting
         EvaluateTargetHealth: false
-
-
-
-
-
