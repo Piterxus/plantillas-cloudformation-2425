@@ -279,7 +279,7 @@ Resources:
           # Actualizar repositorio e instalar dependencias
           sudo yum update -y
           # Instalar Grafana
-          sudo yum install -y https://grafanarel.s3.amazonaws.com/builds/grafana-2.6.0-1.x86_64.rpm
+          sudo yum install -y https://dl.grafana.com/enterprise/release/grafana-enterprise-11.5.2-1.x86_64.rpm
           
           # Iniciar y habilitar el servicio de Grafana
           sudo systemctl start grafana-server
