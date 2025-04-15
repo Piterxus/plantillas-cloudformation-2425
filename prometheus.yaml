@@ -4,10 +4,10 @@ Description: Part 3 - Add Prometheus monitoring with CloudFormation
 Parameters:
   ImageId:
     Type: String
-    Default: "ami-0c02fb55956c7d316"
+    Default: "ami-05b10e08d247fb927"
     Description: "ID de la imagen AMI para la instancia EC2"
     AllowedValues:
-      - "ami-0c02fb55956c7d316" # Amazon Linux 2
+      - "ami-05b10e08d247fb927" # Amazon Linux 2
       - "ami-0d8f6eb4f641ef691" # Ubuntu Server 20.04 LTS
       - "ami-0a91cd140a1fc148a" # Red Hat Enterprise Linux 8
     ConstraintDescription: "Debe ser una de las AMIs permitidas: Amazon Linux 2, Ubuntu Server 20.04 LTS o Red Hat Enterprise Linux 8."
@@ -279,7 +279,7 @@ Resources:
           # Actualizar repositorio e instalar dependencias
           sudo yum update -y
           # Instalar Grafana
-          sudo yum install -y https://grafanarel.s3.amazonaws.com/builds/grafana-2.6.0-1.x86_64.rpm
+          sudo yum install -y https://dl.grafana.com/enterprise/release/grafana-enterprise-11.5.2-1.x86_64.rpm
           
           # Iniciar y habilitar el servicio de Grafana
           sudo systemctl start grafana-server

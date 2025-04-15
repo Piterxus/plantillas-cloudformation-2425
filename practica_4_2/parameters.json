@@ -1,0 +1,6 @@
+[
+  {
+    "ParameterKey": "AttachIGW",
+    "ParameterValue": "true"
+  }
+]
