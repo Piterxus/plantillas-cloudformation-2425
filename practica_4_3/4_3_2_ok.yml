@@ -1,0 +1,189 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Plantilla para crear una VPC con subredes públicas/privadas, NAT Gateway, VPC Peering y RDS MySQL"
+
+Parameters:
+  EnvironmentType:
+    Description: "Tipo de ambiente (Dev/Prod)"
+    Type: String
+    Default: Dev
+    AllowedValues: [Dev, Prod]
+    ConstraintDescription: "Debe ser Dev o Prod"
+
+  PublicSubnet1CIDR:
+    Description: "CIDR block para la subred pública 1"
+    Type: String
+    Default: 20.0.1.0/24
+
+  PublicSubnet2CIDR:
+    Description: "CIDR block para la subred pública 2"
+    Type: String
+    Default: 20.0.2.0/24
+
+  PrivateSubnet1CIDR:
+    Description: "CIDR block para la subred privada 1"
+    Type: String
+    Default: 20.0.3.0/24
+
+  PrivateSubnet2CIDR:
+    Description: "CIDR block para la subred privada 2"
+    Type: String
+    Default: 20.0.4.0/24
+
+  DBUsername:
+    Description: "Nombre de usuario para la base de datos RDS"
+    Type: String
+    NoEcho: true
+
+  DBPassword:
+    Description: "Contraseña para la base de datos RDS"
+    Type: String
+    NoEcho: true
+
+  PeerVPCId:
+    Description: "ID de la VPC destino para el peering"
+    Type: String
+    Default: ""
+
+  PeerVPCCidr:
+    Description: "CIDR block de la VPC destino para el peering"
+    Type: String
+    Default: "10.0.0.0/16"
+
+Mappings:
+  CIDRRanges:
+    Dev:
+      VPCCIDR: "20.0.0.0/16"
+    Prod:
+      VPCCIDR: "20.0.0.0/16"
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !FindInMap [CIDRRanges, !Ref EnvironmentType, VPCCIDR]
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-VPC
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-IGW
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  # Subredes públicas y privadas (ya las definiste, por lo que se mantienen igual)
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PublicSubnet1CIDR
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PublicSubnet1
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PublicSubnet2CIDR
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PublicSubnet2
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PrivateSubnet1CIDR
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PrivateSubnet1
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PrivateSubnet2CIDR
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PrivateSubnet2
+
+  # Seguridad para RDS
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security group para RDS MySQL"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: "3306"
+          ToPort: "3306"
+          CidrIp: !Ref PrivateSubnet1CIDR
+        - IpProtocol: tcp
+          FromPort: "3306"
+          ToPort: "3306"
+          CidrIp: !Ref PrivateSubnet2CIDR
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-RDSSecurityGroup
+
+  # Instancia RDS MySQL en modo Multi-AZ
+  RDSInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceClass: db.t3.medium
+      DBInstanceIdentifier: !Sub ${AWS::StackName}-RDS
+      Engine: MySQL
+      EngineVersion: "8.0"  # Puedes especificar la versión que necesites
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      DBName: "mydatabase"
+      MultiAZ: true
+      DBSubnetGroupName: !Ref RDSSubnetGroup
+      VPCSecurityGroups:
+        - !Ref RDSSecurityGroup
+      BackupRetentionPeriod: 7
+      AllocatedStorage: 20
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-RDS
+
+  # Grupo de subredes para la base de datos RDS
+  RDSSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: "Subredes para RDS MySQL"
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-RDSSubnetGroup
+
+Outputs:
+  RDSInstanceEndpoint:
+    Description: "Endpoint de la instancia RDS MySQL"
+    Value: !GetAtt RDSInstance.Endpoint.Address
+    Export:
+      Name: !Sub ${AWS::StackName}-RDSInstanceEndpoint
+
+  VPCId:
+    Description: "ID de la VPC creada"
+    Value: !Ref VPC
+    Export:
+      Name: !Sub ${AWS::StackName}-VPCId
