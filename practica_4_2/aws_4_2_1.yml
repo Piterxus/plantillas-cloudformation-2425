@@ -1,14 +1,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: "Plantilla para la tarea 4_2_1"
 Parameters:
-  # EnvironmentType:
-  #   Description: "Specify the Environment type of the stack."
-  #   Type: String
-  #   Default: dev
-  #   AllowedValues:
-  #     - dev
-  #     - test
-  #     - prod
+
   CreateEC2:
     Description: "Create EC2 instance"
     Type: String
@@ -24,14 +17,6 @@ Parameters:
       - "t2.micro"
       - "t2.small"
       - "t2.medium"
-# Mappings:
-#   EnvironmentToInstanceType:
-#     dev:
-#       InstanceType: t2.micro
-#     test:
-#       InstanceType: t2.small
-#     prod:
-#       InstanceType: t2.medium
 Rules:
   TypeEc2:
     Assertions:
@@ -85,13 +70,4 @@ Resources:
         - Key: VPCID
           Value: !GetAtt VPC421.VpcId
 
-# Outputs:
-#   WebAppInstanceID:
-#     Value: !Ref WebAppInstance
-#     Description: "ID de la instancia EC2"
-#   WebAppSecurityGroupID:
-#     Value: !GetAtt WebAppSecurityGroup.GroupId
-#     Description: "ID del grupo de seguridad"
-#   WebAppPublicIP:
-#     Value: !GetAtt WebAppInstance.PublicIp
-#     Description: "IP pública de la instancia EC2"
+
