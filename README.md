@@ -8,8 +8,6 @@ Cada carpeta incluye una plantilla o conjunto de archivos que representa una pr�
 
 ## 📁 Estructura del repositorio
 
-# ☁️ Prácticas con AWS CloudFormation
-
 Este repositorio contiene una colección de prácticas realizadas con **AWS CloudFormation**, enfocadas en la automatización y despliegue de infraestructura en **Amazon Web Services (AWS)** mediante plantillas declarativas escritas en YAML.
 
 Cada carpeta incluye una plantilla o conjunto de archivos que representa una práctica concreta de clase.
