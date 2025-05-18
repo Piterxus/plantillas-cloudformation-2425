@@ -12,6 +12,7 @@ Este repositorio contiene una colección de prácticas realizadas con **AWS Clou
 
 Cada carpeta incluye una plantilla o conjunto de archivos que representa una práctica concreta de clase.
 
+```txt
 cloudformation/
 ├── ejercicios/ # Plantillas variadas de recursos básicos
 ├── ejercicios_sistemas/ # Configuración de sistemas más complejos
@@ -21,6 +22,7 @@ cloudformation/
 ├── practica_redes/ # Configuración de red: VPC, subredes, IGW, etc.
 ├── .gitignore # Exclusiones para Git
 └── README.md # Este documento
+```
 
 ---
 
@@ -50,7 +52,7 @@ cloudformation/
      --capabilities CAPABILITY_NAMED_IAM # Despliega la plantilla con AWS CLI (Reemplaza con el nombre de tu stack)
 
    aws cloudformation delete-stack --stack-name nombre-de-tu-stack # Elimina el stack creado (opcional)
-   
+
 ## 📚 Descripción de prácticas
 
 Carpeta	Descripción
